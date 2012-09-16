@@ -1,0 +1,550 @@
+/* Sebastian Paredes sp569 & Stanislav Perevozchikov sp574      
+ * Time Spent: 15 hours
+ * 
+ * Extensions: 
+ * (1) We added looping background music and implemented sound effects to play when the ball
+ * collides with different objects in the game.
+ * (2) Also, a background image was added to create a more user-friendly atmosphere and a more graphic design of the game.
+ * (3) We also added "hearts" in the top left corner of the game that show the player
+ * how many lives they have left. The hearts are removed each time the player misses the ball
+ * (4) Also, "Try Again" was implemented. When the player loses the ball 3 times, 
+ * the game will promt the player to "Try Again" by clicking their mouse
+ * (5) A big extension we added was "Power Ups". During the 'setup' part of the code, we randomly 
+ * create 'power up bricks' using Math.random() and 'if-statements'. In order for this to work properly,
+ * we had to create a separate class PowerUp that extends GRect. Basically, it has the same 
+ * constructors in it as class Brick, except the constructors in class PowerUp add colors to 'power up bricks'.
+ * 'Power up bricks' have a black outline, which separates them from the rest of the bricks. When a 'power up brick'
+ * is hit, either the paddle will change in length or the speed of the ball will decrease/increase. 
+ * Overall, these extensions were added with the main concern of creating a more enjoyable game while satisfying
+ * the assignment specifications and not going over the scope of the course. By these graphical features that we added, we
+ * believe the game is more enjoyable and interacts more compactly with the user.
+ * 
+ * It was a fun assignment due to the freedom we had with it. We felt that this assignment connected 
+ * all of the Java knowledge that we've learned since the beginning of the semester. Although it wasn't an easy 
+ * assignment, it boosted our confidence in writing code and thinking in computer science terms, while proving
+ * to ourselves that we've mastered the syntax of the Java language. Something that could be improved for future 
+ * assignments could be decreasing the amount of specifications and giving even more freedom to students providing 
+ * less skeleton code and more graphical and personal freedom of implementation of objects such as the bricks and the ball.
+ *
+ * */
+
+import acm.graphics.*;
+import acm.program.*;
+import acm.util.*;
+import java.applet.*;
+import java.awt.*;
+import java.awt.event.*;
+
+/** An instance is the game breakout. Start it by executing
+  *  Breakout.main(null);                                 */
+public class Breakout extends GraphicsProgram implements MouseListener{
+    
+    /** Width of the game display (al coordinates are in pixels) */
+    private static final int GAME_WIDTH= 480;
+    /** Height of the game display */
+    private static final int GAME_HEIGHT= 620;
+    
+    /** Width of the paddle */
+    private static int PADDLE_WIDTH= 58;
+    /** Height of the paddle */
+    private static final int PADDLE_HEIGHT= 11;
+    /**Distance of the (bottom of the) paddle up from the bottom */
+    private static final int PADDLE_OFFSET= 30;
+    
+    /** Horizontal separation between bricks */
+    public static final int BRICK_SEP_H= 5;
+    /** Vertical separation between bricks */
+    private static final int BRICK_SEP_V= 4;
+    /** Height of a brick */
+    private static final int BRICK_HEIGHT= 8;
+    /** Offset of the top brick row from the top */
+    private static final int BRICK_Y_OFFSET= 70;
+    
+    /** Number of bricks per row */
+    public static  int BRICKS_IN_ROW= 10;
+    /** Number of rows of bricks, in range 1..10. */
+    public static  int BRICK_ROWS= 10;
+    /** Width of a brick */
+    public static int BRICK_WIDTH= GAME_WIDTH / BRICKS_IN_ROW - BRICK_SEP_H;
+    
+    /** Diameter of the ball in pixels */
+    private static final int BALL_DIAMETER= 18;
+    
+    /** Number of turns */
+    private static int NTURNS= 3;
+    
+    /** Boolean used for repeating program on mouseclick */
+    private static boolean restart= true;
+    
+    /** The paddle*/
+    private GRect paddle;
+    /** The ball*/
+    private GOval ball;
+    /** velocities of the ball, which consist of its horizontal (x) component and its vertical (y) component*/
+    private double vx, vy; 
+    /** Number of bricks*/
+    public static int numBricks=0;
+        
+    /** rowColors[i] is the color of row i of bricks */
+    private static final Color[] rowColors= {Color.red, Color.red, Color.orange, Color.orange,
+        Color.yellow, Color.yellow, Color.green, Color.green,
+        Color.cyan, Color.cyan};
+    
+    /** random number generator */
+    private RandomGenerator rgen = new RandomGenerator();
+    
+    /** Sound to play when the ball hits one of the walls. */
+    private static AudioClip bounceClip = MediaTools.loadAudioClip("cup1.wav");
+    /** Sound to play when the user wins the game */
+    private static AudioClip winClip= MediaTools.loadAudioClip("win.wav");
+    /** Sound to play when the user loses the game. */
+    private static AudioClip sadClip= MediaTools.loadAudioClip("sad.wav");
+    /** Sound to play when the ball hits a brick. */
+    private static AudioClip brickClip= MediaTools.loadAudioClip("brick.wav");
+    /** Sound to play when the ball hits the paddle. */
+    private static AudioClip paddleClip= MediaTools.loadAudioClip("paddle.wav");
+    /** Sound to play throughout the game */
+    private static AudioClip bgmusic= MediaTools.loadAudioClip("bgmusic.au");
+    /** Sound to play when the ball hits a PowerUp block. */
+    private static AudioClip powerUp= MediaTools.loadAudioClip("saucer1.wav");
+    
+    /** Run the program as an application. If args contains 2 elements that are positive
+      *  integers, then use the first for the number of bricks per row and the second for
+      *  the number of rows of bricks.
+      *  A hint on how main works. The main program creates an instance of
+      *  the class, giving the constructor the width and height of the graphics
+      *  panel. The system then calls method run() to start the computation.
+      */
+    public static void main(String[] args) {
+        while(restart) {
+            fixBricks(args);
+            String[] sizeArgs= {"width=" + GAME_WIDTH, "height=" + GAME_HEIGHT};
+            new Breakout().start(sizeArgs);
+            
+        }
+    }
+    
+    // ASSIGNMENT METHODS (TO BE COMPLETED)
+    
+    /** If b is null, doesn't have exactly two elements, or the elements are not
+      *  positive integers, DON'T DO ANYTHING.
+      *  If b is non-null, has exactly two elements, and they are positive
+      *  integers with no blanks surrounding them, then:
+      *  Store the first int in BRICKS_IN_ROW, store the second int in BRICK_ROWS,
+      *  and recompute BRICK_WIDTH using the formula given in its declaration.  */
+    public static void fixBricks(String[] b) {
+        /*  Hint. You have to make sure that the two Strings are positive integers.
+         The simplest way to do that is to use the calls Integer.valueOf(b[0]) and
+         Integer.valueOf(b[1]) within a try-statement in which the catch block is
+         empty. Don't store any values in the static fields UNTIL YOU KNOW THAT
+         both array elements are positive integers.    */
+        
+        try{
+            int a = Integer.valueOf(b[0]); 
+            int c = Integer.valueOf(b[1]);
+            if (b != null && b.length == 2){
+                if (a>0 && c>0){
+                    BRICKS_IN_ROW=a;
+                    BRICK_ROWS=c;
+                    BRICK_WIDTH=GAME_WIDTH / BRICKS_IN_ROW - BRICK_SEP_H;
+                }
+            }
+        }catch (Exception o){
+        }
+    }
+    
+    
+    /** Run the Breakout program. */
+    public void run() {
+        setup();
+        runTheGame();
+    }
+    
+    /** Helper method to run() that sets up the game objects. */
+    public void setup(){
+        bgmusic.loop();
+        addMouseListeners();
+        GImage bgImage = new GImage("stars.jpg");
+        bgImage.sendToBack();
+        add(bgImage, 0,0);
+       
+        for(int j =1; j<=BRICK_ROWS; j=j+1){
+            for (int i=0; i<BRICKS_IN_ROW; i=i+1){ 
+                double r= Math.random();
+                if(r<=0.8) {
+                    Brick a = new Brick (BRICK_SEP_H/2+i%BRICKS_IN_ROW*(BRICK_WIDTH+BRICK_SEP_H), (BRICK_Y_OFFSET+(BRICK_SEP_V+BRICK_HEIGHT)*j), BRICK_WIDTH, BRICK_HEIGHT);
+                    a.setFilled(true);
+                    a.setFillColor(rowColors[(j-1)%10]);
+                    a.setColor(rowColors[(j-1)%10]);
+                    add(a);
+                } else {
+                    PowerUp pu= new PowerUp((BRICK_SEP_H/2+i%BRICKS_IN_ROW*(BRICK_WIDTH+BRICK_SEP_H)), (BRICK_Y_OFFSET+(BRICK_SEP_V+BRICK_HEIGHT)*j), BRICK_WIDTH,BRICK_HEIGHT);
+                    add(pu);
+                }
+                numBricks=numBricks+1;
+            }
+        }
+        
+        for(int k=0; k<NTURNS; k=k+1){
+            GImage lifeIm = new GImage("life.png");
+            lifeIm.setSize(20,20);
+            add(lifeIm, (30+k*20),(35));
+        }
+        
+        paddle = new GRect((GAME_WIDTH/2-PADDLE_WIDTH/2), (GAME_HEIGHT-PADDLE_OFFSET-PADDLE_HEIGHT), PADDLE_WIDTH, PADDLE_HEIGHT);
+        paddle.setBounds(GAME_WIDTH/2-PADDLE_WIDTH/2, GAME_HEIGHT-PADDLE_OFFSET-PADDLE_HEIGHT, PADDLE_WIDTH, PADDLE_HEIGHT);
+        paddle.setFilled(true);
+        paddle.setFillColor(Color.orange);
+        paddle.setColor(Color.orange);
+        add(paddle);
+    }
+    
+   /** Helper method to run(), which contains the loop for playing the game. */
+    public void runTheGame(){
+        ball = new GOval(GAME_WIDTH/2-BALL_DIAMETER/2, GAME_HEIGHT/2-BALL_DIAMETER/2, BALL_DIAMETER, BALL_DIAMETER);
+        ball.setColor(Color.orange);
+        ball.setFillColor(Color.orange);
+        ball.setFilled(true);
+        add(ball);
+        vy = 3.0;
+        vx = rgen.nextDouble(1.0, 3.0); 
+        if (!rgen.nextBoolean(0.5)) { vx = -vx; }
+        while(true){
+            loopyLoop(); // helper method that contains all the vital 'if-statements' for the game
+        }
+    }
+    
+    /** Yields: number of Bricks remaining on the canvas*/
+    public int getNumBricks(){
+        numBricks=numBricks-1;
+        return numBricks;
+        
+    }
+    
+    /**Helper method to runTheGame(), which contains most of the if-statement that run the game*/
+    public void loopyLoop(){
+        ball.move(vx, vy);
+        
+        if(ball.getX() <= 0){
+            bounceClip.play();
+            vx=-vx;
+            ball.move(vx, vy);
+        }
+        if(ball.getY() <= 0){
+            bounceClip.play();
+            GLabel breakout = new GLabel("BREAKOUT!");
+            breakout.setFont(new Font("Verdana", Font.BOLD, 28));
+            breakout.setColor(Color.red);
+            breakout.setLocation((GAME_WIDTH-breakout.getWidth())/2, (GAME_HEIGHT-breakout.getHeight())/2);
+            add(breakout);
+            pause(300);
+            vy=-vy;
+            ball.move(vx, vy);
+            remove(breakout);
+        }
+        if ((ball.getX()+BALL_DIAMETER)>=GAME_WIDTH){
+            bounceClip.play();
+            vx=-vx;
+            ball.move(vx, vy);
+        }
+        if((ball.getY()+BALL_DIAMETER)>GAME_HEIGHT){
+            lostOrNot(); // helper method that determines how many lives the player has left
+        }
+        pause(10);
+        
+        if(vy>0 && getCollidingObject() == paddle){
+            paddleClip.play();
+            vy=-vy;
+            ball.move(vx, vy);
+        }
+        
+        if(getCollidingObject() instanceof PowerUp) {
+            powerUp.play();
+            pause(30);
+            PowerUpAssigner(getCollidingObject());
+            remove(getCollidingObject());
+            winning(); //checks for winning condition
+            ball.move(vx, vy);
+        }
+        
+        if(getCollidingObject() instanceof Brick){
+            brickClip.play();
+            pause(30);
+            remove(getCollidingObject());
+            vy=-vy;
+            winning(); //checks for winning condition
+            ball.move(vx, vy);
+        }
+    }
+    
+    /** Helper method to loopyLoop(), which checks how many lives the player has left*/
+    public void lostOrNot(){
+        for(int k=NTURNS; k>NTURNS-1; k=k-1){ // getting rid of hearts in the top left corner
+            remove(getElementAt((10+k*20),(35)));
+        }
+        pause(10);
+        remove(ball);
+       
+        GLabel endMessage = new GLabel((NTURNS==3?"You Lost, LOSER!":(NTURNS==2?"You lost AGAIN!":"GAME OVER")));
+        if(NTURNS==1){
+            bgmusic.stop(); 
+            sadClip.play();
+        }
+        endMessage.setFont(new Font("Serif", Font.BOLD, 28));
+        endMessage.setColor(Color.red);
+        endMessage.setLocation((GAME_WIDTH-endMessage.getWidth())/2, GAME_HEIGHT/2);
+        GRect endMessageRect = new GRect(GAME_WIDTH/2-endMessage.getWidth()/2-5, GAME_HEIGHT/2-endMessage.getHeight()+5,endMessage.getWidth()+10, endMessage.getHeight()+5);
+        endMessageRect.setColor(Color.black);
+        endMessageRect.setFillColor(Color.black);
+        endMessageRect.setFilled(true);
+        add(endMessageRect);
+        add(endMessage);
+        pause(1500);
+        remove(endMessage);
+        remove(endMessageRect);
+        if(NTURNS>1){ 
+            lifeMessages();
+        }
+        if(NTURNS==1){ //termination of the game
+            pause(1000);
+            GLabel tryAgain = new GLabel("Try Again? Click!");
+            tryAgain.setFont(new Font("Serif", Font.BOLD, 18));
+            tryAgain.setColor(Color.yellow);
+            tryAgain.setLocation((GAME_WIDTH-tryAgain.getWidth())/2, GAME_HEIGHT/2);
+            GRect tryAgainRect = new GRect(GAME_WIDTH/2-tryAgain.getWidth()/2-5, GAME_HEIGHT/2-tryAgain.getHeight()+5,tryAgain.getWidth()+10, tryAgain.getHeight()+5);
+            tryAgainRect.setColor(Color.black);
+            tryAgainRect.setFillColor(Color.black);
+            tryAgainRect.setFilled(true);
+            add(tryAgainRect);
+            add(tryAgain);
+            waitForClick(); //wait for user input: exit/try again
+            NTURNS=3;
+            PADDLE_WIDTH=58;
+            run();
+        }
+    }
+    
+    
+    /* Helper method to runTheGmae() that check if the player has won*/
+    public void winning(){
+        if(getNumBricks()==0){  
+            bgmusic.stop();
+            winClip.play();
+            remove(ball);
+            remove(paddle);
+            pause(500);
+            GLabel youWon = new GLabel("YOU WON!");
+            youWon.setFont(new Font("Serif", Font.BOLD, 33));
+            youWon.setColor(Color.yellow);
+            youWon.setLocation((GAME_WIDTH-youWon.getWidth())/2, GAME_HEIGHT/2);
+            GRect youWonRect = new GRect(GAME_WIDTH/2-youWon.getWidth()/2-5, GAME_HEIGHT/2-youWon.getHeight()+5,youWon.getWidth()+10, youWon.getHeight()+5);
+            youWonRect.setColor(Color.black);
+            youWonRect.setFillColor(Color.black);
+            youWonRect.setFilled(true);
+            add(youWonRect);
+            add(youWon);
+            pause(2500);
+            remove(youWonRect);
+            remove(youWon);
+            
+            for(int secs=3; secs>0; secs=secs-1){
+                GLabel exitRestart = new GLabel("Click to exit or restart in "+secs+" seconds");
+                exitRestart.setFont(new Font("Serif", Font.BOLD, 18));
+                exitRestart.setColor(Color.yellow);
+                exitRestart.setLocation((GAME_WIDTH-exitRestart.getWidth())/2, GAME_HEIGHT/2);
+                add(exitRestart);
+                pause(1000);
+                remove(exitRestart);
+            }
+            run();
+        }
+    }
+    /** Helper method to lostOrNot(), which takes care of the messages after the player loses a life*/
+    public void lifeMessages(){
+        int life=NTURNS;
+        life=life-1;
+        NTURNS=life;
+        GLabel newLife = new GLabel("You have "+life+" more "+(life%2==0? "lives ":"life"));
+        newLife.setFont(new Font("Serif", Font.BOLD, 24));
+        newLife.setColor(Color.red);
+        newLife.setLocation((GAME_WIDTH-newLife.getWidth())/2, GAME_HEIGHT/2);
+        add(newLife);
+        pause(1500);
+        remove(newLife);
+        for(int seconds=3; seconds>0; seconds=seconds-1){
+            GLabel newLife2 = new GLabel ("Another ball is coming in "+ seconds +" seconds");
+            newLife2.setFont(new Font("Serif", Font.BOLD, 20));
+            newLife2.setColor(Color.red);
+            newLife2.setLocation((GAME_WIDTH-newLife2.getWidth())/2, GAME_HEIGHT/2);
+            add(newLife2);
+            pause(1000);
+            remove(newLife2);
+        }
+        runTheGame();
+    }
+    /** Helper method to loopyLoop(), which checks for collisions of the ball and returns the collided object */
+    public GObject getCollidingObject(){
+        if((getElementAt(ball.getX(), ball.getY()) == paddle) || (getElementAt(ball.getX(), ball.getY()) instanceof Brick) 
+               || (getElementAt(ball.getX(), ball.getY()) instanceof PowerUp)){
+            return getElementAt(ball.getX(), ball.getY());
+        }
+        if((getElementAt(ball.getX()+BALL_DIAMETER, ball.getY()) == paddle) || (getElementAt(ball.getX()+BALL_DIAMETER, ball.getY()) instanceof Brick)
+               || (getElementAt(ball.getX()+BALL_DIAMETER, ball.getY()) instanceof PowerUp)){
+            return getElementAt(ball.getX()+BALL_DIAMETER, ball.getY());
+        } 
+        if((getElementAt(ball.getX(), ball.getY()+BALL_DIAMETER) == paddle) || (getElementAt(ball.getX(), ball.getY()+BALL_DIAMETER) instanceof Brick)
+               || (getElementAt(ball.getX(), ball.getY()+BALL_DIAMETER) instanceof PowerUp)){
+            return getElementAt(ball.getX(), ball.getY()+BALL_DIAMETER);
+        } 
+        if((getElementAt(ball.getX()+BALL_DIAMETER, ball.getY()+BALL_DIAMETER) == paddle) 
+               || (getElementAt(ball.getX()+BALL_DIAMETER, ball.getY()+BALL_DIAMETER) instanceof Brick)
+               || (getElementAt(ball.getX()+BALL_DIAMETER, ball.getY()+BALL_DIAMETER) instanceof PowerUp)){
+            return getElementAt(ball.getX()+BALL_DIAMETER, ball.getY()+BALL_DIAMETER);
+        }
+        return null;
+    }
+    
+    /** Helper method to loopyLoop(), which handles PowerUp block assessment */
+    public void PowerUpAssigner(GObject g) {
+        Color c= ((PowerUp)g).getFillColor();
+        if (c==Color.red) {
+            vy= -vy;
+            PADDLE_WIDTH = (int) (PADDLE_WIDTH/1.33);
+            paddle.setBounds(paddle.getX(),paddle.getY(), PADDLE_WIDTH, PADDLE_HEIGHT);
+            pause(10);
+        }
+        if (c==Color.blue) {
+            vy= -vy;
+            PADDLE_WIDTH= (int) (PADDLE_WIDTH*1.2);
+            paddle.setBounds(paddle.getX(), paddle.getY(), PADDLE_WIDTH, PADDLE_HEIGHT);
+            pause(10);
+        }
+        if (c==Color.green) {
+            vy= -vy;
+            PADDLE_WIDTH= (int) (PADDLE_WIDTH*0.7);
+            paddle.setBounds(paddle.getX(),paddle.getY(), PADDLE_WIDTH, PADDLE_HEIGHT);
+            pause(10);
+        }
+        if(c==Color.yellow) {
+            vy= -(1.15)*vy;
+            vx= 1.15*vx;
+            pause(10);
+        }
+        if(c==Color.cyan) {
+            vy= -(0.85)*vy;
+            vx= 0.85*vx;
+            pause(10);
+        }
+    }
+    
+    /** Move the horizontal middle of the paddle to the x-coordinate of the mouse
+      *  -- but keep the paddle completely on the board.
+      *  Called by the system when the mouse is used.            */
+    public void mouseMoved(MouseEvent e) {
+        GPoint p= new GPoint(e.getPoint());
+        paddle.setLocation((p.getX()-PADDLE_WIDTH/2), GAME_HEIGHT-PADDLE_OFFSET-PADDLE_HEIGHT);
+        
+        if((p.getX()-PADDLE_WIDTH/2)<=0){ paddle.setLocation(0, GAME_HEIGHT-PADDLE_OFFSET-PADDLE_HEIGHT);}
+        if((p.getX()+PADDLE_WIDTH/2)>=GAME_WIDTH){ paddle.setLocation(GAME_WIDTH-PADDLE_WIDTH, GAME_HEIGHT-PADDLE_OFFSET-PADDLE_HEIGHT);}
+        
+        // Set x to the left edge of the paddle so that the middle of the paddle
+        // is where the mouse is --except that the mouse must stay completely
+        // in the pane if the mouse moves past the left or right edge.
+    }
+    
+    /** Ends the game on mouse click if there are no more bricks left on the canvas
+      * Else, it restarts the game on mouse click in any other situation*/
+    public void mouseClicked(MouseEvent e) {
+        if(numBricks==0) {
+            removeAll();
+            restart= false;
+            System.exit(0);
+        }else{
+            restart=true;
+        }
+    }
+    
+    // DEBUGGING METHODS 
+    
+    /** Yields: representation of array b: its elements separated by ", " and 
+      *  delimited by []. If b == null, return null. */
+    public static String toString(String[] b) {
+        if (b == null) return null;
+        
+        String res= "[";
+        // inv res contains "[" + elements of b[0..k-1] separated by ", "
+        for (int k= 0; k < b.length; k= k+1) {
+            if (k > 0)
+                res= res + ", ";
+            res= res + b[k];
+        }
+        return res + "]";
+    }
+    
+}
+
+/** An instance is a Brick */
+/*  Note: This program will not compile until you write the two
+ *   constructors correctly, because GRect does not have a 
+ *   constructor with no parameters.  (You know that if a constructor
+ *   does not begin with a call off another constructor, Java inserts
+ *   
+ *       super();
+ */
+class Brick extends GRect {
+    
+    /** Constructor: a new brick with width w and height h*/
+    public Brick(double w, double h) {
+        super (w , h);
+    }
+    
+    /** Constructor: a new brick at (x,y) with width w and height h*/
+    public Brick(double x, double y, double w, double h) {
+        super (x, y, w, h);  
+    }
+}
+/** Class PowerUp that creates a PowerUp brick of different colors*/
+class PowerUp extends GRect {
+    
+    /** Constructor: a new power-up-brick with width w, and height h, and color c*/
+    public PowerUp(double w, double h) {
+        super (w , h);
+        setFilled(true);
+        Color c= Color.blue;
+        double r= Math.random();
+        if (r<=.2) {
+            c= Color.green;
+        }
+        if (r>.2 && r<=.4) {
+            c= Color.cyan;
+        }
+        if (r>.4 && r<=.6) {
+            c= Color.yellow;
+        }
+        if (r>.6 && r<=.9) {
+            c= Color.red;
+        }
+        setFillColor(c);
+    }
+    
+    /** Constructor: a new power-up-brick at (x,y) with width w, and height h, and color c*/
+    public PowerUp(double x, double y, double w, double h) {
+        super (x, y, w, h);  
+        setFilled(true);
+        Color c= Color.blue;
+        double r= Math.random();
+        if (r<=.2) {
+            c= Color.green;
+        }
+        if (r>.2 && r<=.35) {
+            c= Color.cyan;
+        }
+        if (r>.35 && r<=.65) {
+            c= Color.yellow;
+        }
+        if (r>.65 && r<=.9) {
+            c= Color.red;
+        }
+        setFillColor(c);
+    }
+}
